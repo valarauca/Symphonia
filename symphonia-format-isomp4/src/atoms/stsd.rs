@@ -25,6 +25,7 @@ use symphonia_core::codecs::audio::{
 };
 use symphonia_core::codecs::subtitle::SubtitleCodecParameters;
 use symphonia_core::codecs::subtitle::well_known::CODEC_ID_MOV_TEXT;
+use symphonia_core::codecs::video::well_known::CODEC_ID_MJPEG;
 use symphonia_core::codecs::video::{VideoCodecId, VideoCodecParameters, VideoExtraData};
 use symphonia_core::codecs::{CodecParameters, CodecProfile};
 use symphonia_core::errors::{Result, decode_error, unsupported_error};
@@ -87,6 +88,7 @@ impl Atom for StsdAtom {
             | AtomType::VisualSampleEntryDvhe
             | AtomType::VisualSampleEntryHev1
             | AtomType::VisualSampleEntryHvc1
+            | AtomType::VisualSampleEntryMjpeg
             | AtomType::VisualSampleEntryMp4v
             | AtomType::VisualSampleEntryVp8
             | AtomType::VisualSampleEntryVp9 => {
@@ -571,6 +573,10 @@ fn read_visual_sample_entry<B: ReadBytes>(
                 debug!("unknown visual sample entry sub-atom: {:?}.", entry_header.atom_type());
             }
         }
+    }
+
+    if header.atom_type == AtomType::VisualSampleEntryMjpeg {
+        entry.codec_id = CODEC_ID_MJPEG;
     }
 
     Ok(SampleEntry::Visual(entry))

@@ -60,7 +60,7 @@ pub fn codec_id_from_object_type_indication(obj_type: u8) -> Option<CodecId> {
         CODEC_ID_AAC, CODEC_ID_AC3, CODEC_ID_DCA, CODEC_ID_EAC3, CODEC_ID_MP3,
     };
     use symphonia_core::codecs::video::well_known::{
-        CODEC_ID_H264, CODEC_ID_HEVC, CODEC_ID_MPEG2, CODEC_ID_MPEG4, CODEC_ID_VP9,
+        CODEC_ID_H264, CODEC_ID_HEVC, CODEC_ID_MJPEG, CODEC_ID_MPEG2, CODEC_ID_MPEG4, CODEC_ID_VP9,
     };
 
     // AAC
@@ -83,6 +83,9 @@ pub fn codec_id_from_object_type_indication(obj_type: u8) -> Option<CodecId> {
     const OBJ_TYPE_VISUAL_MPEG2_2_SPATIAL: u8 = 0x63; // Visual ISO/IEC 13818-2 Spatial Profile
     const OBJ_TYPE_VISUAL_MPEG2_2_HP: u8 = 0x64; // Visual ISO/IEC 13818-2 High Profile
     const OBJ_TYPE_VISUAL_MPEG2_2_422: u8 = 0x65; // Visual ISO/IEC 13818-2 422 Profile
+
+    // JPEG
+    const OBJ_TYPE_VISUAL_JPEG: u8 = 0x6c; // Visual ISO/IEC 10918-1 (JPEG)
 
     // MPEG4 video
     const OBJ_TYPE_VISUAL_MPEG4_2: u8 = 0x20; // Visual ISO/IEC 14496-2
@@ -110,6 +113,7 @@ pub fn codec_id_from_object_type_indication(obj_type: u8) -> Option<CodecId> {
         | OBJ_TYPE_VISUAL_MPEG2_2_SPATIAL
         | OBJ_TYPE_VISUAL_MPEG2_2_HP
         | OBJ_TYPE_VISUAL_MPEG2_2_422 => CodecId::Video(CODEC_ID_MPEG2),
+        OBJ_TYPE_VISUAL_JPEG => CodecId::Video(CODEC_ID_MJPEG),
         OBJ_TYPE_VISUAL_MPEG4_2 => CodecId::Video(CODEC_ID_MPEG4),
         OBJ_TYPE_VISUAL_AVC1 => CodecId::Video(CODEC_ID_H264),
         OBJ_TYPE_VISUAL_HEVC1 => CodecId::Video(CODEC_ID_HEVC),
