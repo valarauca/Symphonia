@@ -3,6 +3,7 @@ macro_rules! file_test {
     (
         module_name: $module_name: ident;
         input_file: $input_file_path: expr;
+        $(duration: $container_duration: expr;)?
 
         audio_codec: $audio_codec: ident;
         $(audio_layout: $audio_channels: ident;)?
@@ -25,7 +26,7 @@ macro_rules! file_test {
             #[allow(unused_imports)] use symphonia_core::audio::channels::{Channels, layouts::{*}};
 
             use std::path::Path;
-            use std::time::Duration;
+            #[allow(unused_imports)] use std::time::Duration;
 
             const DATA: &'static [u8] = include_bytes!($input_file_path);
 
@@ -43,6 +44,8 @@ macro_rules! file_test {
                 let format = symphonia::default::get_probe()
                     .probe(&hint, mss, fmt_opts, meta_opts)
                     .expect("probe failed to identify file");
+
+                $(assert_eq!(format.get_container_duration().expect("expected a container duration"), $container_duration);)?
 
                 let audio = format.default_track(TrackType::Audio).expect("expecting audio track");
                 let audio_params = audio.codec_params.as_ref().expect("expecting codec params").audio().expect("expecting audo info");
@@ -71,6 +74,7 @@ macro_rules! file_test {
 file_test! {
     module_name: libx264_aac_mp4;
     input_file: "video_data/test_libx264_aac_no_sub.mp4";
+    duration: Duration::new(30, 528_000_000);
 
     audio_codec: CODEC_ID_AAC;
     audio_layout: CHANNEL_LAYOUT_STEREO;

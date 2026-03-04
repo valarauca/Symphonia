@@ -674,4 +674,17 @@ impl FormatReader for IsoMp4Reader<'_> {
     {
         self.iter.into_inner()
     }
+
+    fn get_container_duration(&self) -> Option<std::time::Duration> {
+        let mvhd = &self.moov.mvhd;
+        let container = (mvhd.duration != 0 && mvhd.duration != u64::MAX)
+            .then(|| {
+                let time_base = TimeBase::try_from_recip(mvhd.timescale)?;
+                let ts = Timestamp::new(i64::try_from(mvhd.duration).ok()?);
+                let (secs, nanos) = time_base.calc_time(ts)?.parts();
+                Some(std::time::Duration::new(u64::try_from(secs).ok()?, nanos))
+            })
+            .flatten();
+        container.or_else(|| self.tracks().iter().filter_map(|t| t.get_total_duration()).max())
+    }
 }

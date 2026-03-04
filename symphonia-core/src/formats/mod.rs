@@ -350,6 +350,32 @@ impl Track {
         let secs = u64::try_from(secs).ok()?;
         Some(std::time::Duration::new(secs, nanos))
     }
+
+    /// Returns the start offset of the track as a [`std::time::Duration`], if enough information
+    /// is available.
+    ///
+    /// Returns `None` if the track has no `time_base`, if `start_ts` is negative (e.g. encoder
+    /// pre-roll), or if the conversion overflows.
+    pub fn get_start_que_offset(&self) -> Option<std::time::Duration> {
+        let time_base = self.time_base?;
+        let time = time_base.calc_time(self.start_ts)?;
+        let (secs, nanos) = time.parts();
+        let secs = u64::try_from(secs).ok()?;
+        Some(std::time::Duration::new(secs, nanos))
+    }
+
+    /// Returns the total end time of the track as a [`std::time::Duration`], if enough information
+    /// is available. This is the checked sum of [`get_std_duration`] and [`get_start_que_offset`].
+    ///
+    /// Returns `None` if `get_std_duration` is unavaliable, or if the addition of
+    /// `get_std_duration` and `get_start_que_offset` overflows
+    pub fn get_total_duration(&self) -> Option<std::time::Duration> {
+        let dur = self.get_std_duration()?;
+        match self.get_start_que_offset() {
+            None => Some(dur),
+            Some(x) => x.checked_add(dur),
+        }
+    }
 }
 
 /// An attachment is additional data that is carried along with the container format.
@@ -495,6 +521,17 @@ pub trait FormatReader: Send + Sync {
     fn into_inner<'s>(self: Box<Self>) -> MediaSourceStream<'s>
     where
         Self: 's;
+
+    /// Returns the best estimate of the total container duration as a [`std::time::Duration`].
+    ///
+    /// The default implementation returns the maximum [`Track::get_total_duration`] across all
+    /// tracks. Format readers that carry an explicit container-level duration (e.g. `mvhd` in
+    /// ISO MP4, `Info.Duration` in MKV) should override this method, using the container-level
+    /// value as the primary source and falling back to this default only when that value is
+    /// unavailable. Returns `None` only when no duration information is available from any source.
+    fn get_container_duration(&self) -> Option<std::time::Duration> {
+        self.tracks().iter().filter_map(|t| t.get_total_duration()).max()
+    }
 }
 
 /// Returns true, if `track` is of the specific track type.
