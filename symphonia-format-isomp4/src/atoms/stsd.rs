@@ -9,6 +9,7 @@ use core::str;
 
 use log::debug;
 use symphonia_core::audio::{Channels, Position};
+use symphonia_core::audio::channels::layouts::{CHANNEL_LAYOUT_MONO, CHANNEL_LAYOUT_STEREO};
 use symphonia_core::codecs::audio::well_known::CODEC_ID_MP3;
 use symphonia_core::codecs::audio::well_known::{CODEC_ID_PCM_F32BE, CODEC_ID_PCM_F32LE};
 use symphonia_core::codecs::audio::well_known::{CODEC_ID_PCM_F64BE, CODEC_ID_PCM_F64LE};
@@ -30,8 +31,8 @@ use symphonia_core::errors::{Result, decode_error, unsupported_error};
 use symphonia_core::io::ReadBytes;
 
 use crate::atoms::{
-    AlacAtom, Atom, AtomHeader, AtomIterator, AtomType, AvcCAtom, Dac3Atom, Dec3Atom, DoviAtom,
-    EsdsAtom, FlacAtom, HvcCAtom, OpusAtom, WaveAtom,
+    AlacAtom, Atom, AtomHeader, AtomIterator, AtomType, Av1CAtom, AvcCAtom, Dac3Atom, Dec3Atom,
+    DoviAtom, EsdsAtom, FlacAtom, HvcCAtom, OpusAtom, WaveAtom,
 };
 use crate::fp::FpU16;
 
@@ -446,6 +447,14 @@ fn read_audio_sample_entry<B: ReadBytes>(
         entry.codec_id = CODEC_ID_MP3;
     }
 
+    if entry.channels.is_none() {
+        entry.channels = match entry.num_channels {
+            1 => Some(CHANNEL_LAYOUT_MONO),
+            2 => Some(CHANNEL_LAYOUT_STEREO),
+            _ => None,
+        };
+    }
+
     Ok(SampleEntry::Audio(entry))
 }
 
@@ -541,6 +550,10 @@ fn read_visual_sample_entry<B: ReadBytes>(
             AtomType::Esds => {
                 let atom = iter.read_atom::<EsdsAtom>()?;
                 atom.fill_video_sample_entry(&mut entry)?;
+            }
+            AtomType::Av1Configuration => {
+                let atom = iter.read_atom::<Av1CAtom>()?;
+                atom.fill_video_sample_entry(&mut entry);
             }
             AtomType::AvcConfiguration => {
                 let atom = iter.read_atom::<AvcCAtom>()?;

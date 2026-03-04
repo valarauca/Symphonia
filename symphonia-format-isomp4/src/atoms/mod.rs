@@ -11,6 +11,7 @@ use symphonia_core::errors::{Result, decode_error};
 use symphonia_core::io::ReadBytes;
 
 pub(crate) mod alac;
+pub(crate) mod av1c;
 pub(crate) mod avcc;
 pub(crate) mod co64;
 pub(crate) mod ctts;
@@ -56,6 +57,7 @@ pub(crate) mod wave;
 
 pub use self::meta::MetaAtom;
 pub use alac::AlacAtom;
+pub use av1c::Av1CAtom;
 pub use avcc::AvcCAtom;
 pub use co64::Co64Atom;
 #[allow(unused_imports)]
@@ -128,6 +130,7 @@ pub enum AtomType {
     AudioSampleEntryS32,
     AudioSampleEntryU8,
     AuthorTag,
+    Av1Configuration,
     AvcConfiguration,
     BitRate,
     ChunkOffset,
@@ -271,6 +274,7 @@ impl From<[u8; 4]> for AtomType {
             b"alaw" => AtomType::AudioSampleEntryALaw,
             b"av01" => AtomType::VisualSampleEntryAv1,
             b"avc1" => AtomType::VisualSampleEntryAvc1,
+            b"av1C" => AtomType::Av1Configuration,
             b"avcC" => AtomType::AvcConfiguration,
             b"btrt" => AtomType::BitRate,
             b"ec-3" => AtomType::AudioSampleEntryEc3,

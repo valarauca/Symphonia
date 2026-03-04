@@ -11,11 +11,13 @@ use extra_data::{
 };
 use log::warn;
 
+use symphonia_common::mpeg::audio::{aac_channel_config_to_channels, parse_aac_channel_config};
 use symphonia_common::mpeg::video::{
     AVCDecoderConfigurationRecord, HEVCDecoderConfigurationRecord,
 };
-use symphonia_common::xiph::audio::flac::{MetadataBlockHeader, MetadataBlockType};
+use symphonia_common::xiph::audio::flac::{MetadataBlockHeader, MetadataBlockType, StreamInfo};
 use symphonia_core::audio::Channels;
+use symphonia_core::audio::channels::layouts::{CHANNEL_LAYOUT_MONO, CHANNEL_LAYOUT_STEREO};
 use symphonia_core::audio::sample::SampleFormat;
 use symphonia_core::codecs::audio::AudioCodecParameters;
 use symphonia_core::codecs::audio::well_known::{CODEC_ID_FLAC, CODEC_ID_VORBIS};
@@ -67,7 +69,6 @@ fn make_audio_codec_params(
     }
 
     codec_params.with_sample_rate(audio.sampling_frequency.round() as u32);
-    codec_params.with_channels(Channels::Discrete(audio.channels.get() as u16));
 
     let format = audio.bit_depth.and_then(|bits| match bits.get() {
         8 => Some(SampleFormat::S8),
@@ -92,7 +93,30 @@ fn make_audio_codec_params(
             _ => codec_private,
         };
 
+        if id == CODEC_ID_AAC {
+            if let Some(ch_config) = parse_aac_channel_config(&extra_data) {
+                if let Some(channels) = aac_channel_config_to_channels(ch_config) {
+                    codec_params.with_channels(channels);
+                }
+            }
+        }
+
+        if id == CODEC_ID_FLAC {
+            if let Ok(info) = StreamInfo::read(&mut BufReader::new(&*extra_data)) {
+                codec_params.with_channels(info.channels);
+            }
+        }
+
         codec_params.with_extra_data(extra_data);
+    }
+
+    if codec_params.channels.is_none() {
+        let channels = match audio.channels.get() {
+            1 => CHANNEL_LAYOUT_MONO,
+            2 => CHANNEL_LAYOUT_STEREO,
+            n => Channels::Discrete(n as u16),
+        };
+        codec_params.with_channels(channels);
     }
 
     Ok(Some(CodecParameters::Audio(codec_params)))

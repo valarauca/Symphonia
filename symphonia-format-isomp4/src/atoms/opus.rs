@@ -5,6 +5,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use symphonia_core::audio::Channels;
+use symphonia_core::audio::channels::layouts::{CHANNEL_LAYOUT_MONO, CHANNEL_LAYOUT_STEREO};
 use symphonia_core::codecs::audio::well_known::CODEC_ID_OPUS;
 use symphonia_core::errors::{Error, Result, decode_error, unsupported_error};
 use symphonia_core::io::ReadBytes;
@@ -68,5 +70,11 @@ impl OpusAtom {
     pub fn fill_audio_sample_entry(&self, entry: &mut AudioSampleEntry) {
         entry.codec_id = CODEC_ID_OPUS;
         entry.extra_data = Some(self.extra_data.clone());
+        let channel_count = self.extra_data[9];
+        entry.channels = Some(match channel_count {
+            1 => CHANNEL_LAYOUT_MONO,
+            2 => CHANNEL_LAYOUT_STEREO,
+            n => Channels::Discrete(n as u16),
+        });
     }
 }
