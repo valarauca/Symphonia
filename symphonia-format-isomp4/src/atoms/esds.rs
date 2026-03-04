@@ -5,10 +5,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use symphonia_core::audio::Channels;
+use symphonia_core::audio::channels::layouts;
 use symphonia_core::codecs::CodecId;
+use symphonia_core::codecs::audio::well_known::CODEC_ID_AAC;
 use symphonia_core::codecs::video::{VIDEO_EXTRA_DATA_ID_NULL, VideoExtraData};
 use symphonia_core::errors::{Error, Result, decode_error};
-use symphonia_core::io::ReadBytes;
+use symphonia_core::io::{BitReaderLtr, ReadBitsLtr, ReadBytes};
 
 use symphonia_common::mpeg::formats::*;
 
@@ -52,6 +55,38 @@ impl Atom for EsdsAtom {
     }
 }
 
+fn parse_aac_channel_config(extra_data: &[u8]) -> Option<usize> {
+    let mut bs = BitReaderLtr::new(extra_data);
+
+    // audioObjectType: 5 bits; if 31, read 6 more extension bits.
+    let aot = bs.read_bits_leq32(5).ok()?;
+    if aot == 31 {
+        bs.read_bits_leq32(6).ok()?;
+    }
+
+    // samplingFrequencyIndex: 4 bits; if 0xf, skip 24-bit custom rate.
+    let sfi = bs.read_bits_leq32(4).ok()?;
+    if sfi == 0xf {
+        bs.read_bits_leq32(24).ok()?;
+    }
+
+    // channelConfiguration: 4 bits.
+    Some(bs.read_bits_leq32(4).ok()? as usize)
+}
+
+fn aac_channel_config_to_channels(channel_config: usize) -> Option<Channels> {
+    match channel_config {
+        1 => Some(layouts::CHANNEL_LAYOUT_MONO),
+        2 => Some(layouts::CHANNEL_LAYOUT_STEREO),
+        3 => Some(layouts::CHANNEL_LAYOUT_AAC_3P0),
+        4 => Some(layouts::CHANNEL_LAYOUT_AAC_4P0),
+        5 => Some(layouts::CHANNEL_LAYOUT_AAC_5P0),
+        6 => Some(layouts::CHANNEL_LAYOUT_AAC_5P1),
+        7 => Some(layouts::CHANNEL_LAYOUT_AAC_7P1),
+        _ => None,
+    }
+}
+
 impl EsdsAtom {
     /// If the elementary stream descriptor describes an audio stream, populate the provided
     /// audio sample entry.
@@ -70,6 +105,12 @@ impl EsdsAtom {
 
         if let Some(ds_config) = &self.es_desc.dec_config.dec_specific_info {
             entry.extra_data = Some(ds_config.extra_data.clone());
+
+            if entry.codec_id == CODEC_ID_AAC {
+                if let Some(ch_config) = parse_aac_channel_config(&ds_config.extra_data) {
+                    entry.channels = aac_channel_config_to_channels(ch_config);
+                }
+            }
         }
 
         Ok(())

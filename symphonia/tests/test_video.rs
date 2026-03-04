@@ -65,8 +65,22 @@ macro_rules! file_test {
 
 
 file_test! {
-    module_name: libx264_aac;
+    module_name: libx264_aac_mp4;
     input_file: "video_data/test_libx264_aac_no_sub.mp4";
+
+    audio_codec: CODEC_ID_AAC;
+    audio_layout: CHANNEL_LAYOUT_STEREO;
+    audio_rate: 48000;
+
+
+    video_codec: CODEC_ID_H264;
+    video_width: 480;
+    video_height: 270;
+}
+
+file_test! {
+    module_name: libx264_aac_mkv;
+    input_file: "video_data/test_libx264_aac_no_sub.mkv";
 
     audio_codec: CODEC_ID_AAC;
     audio_layout: CHANNEL_LAYOUT_STEREO;
