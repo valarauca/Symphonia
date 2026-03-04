@@ -335,6 +335,21 @@ impl Track {
         self.flags |= flags;
         self
     }
+
+    /// Returns the total duration of the track as a [`std::time::Duration`], if enough information
+    /// is available.
+    ///
+    /// Returns `None` if the track has no `duration`, no `time_base`, or if the conversion
+    /// overflows.
+    pub fn get_std_duration(&self) -> Option<std::time::Duration> {
+        let time_base = self.time_base?;
+        let duration = self.duration?;
+        let ts = Timestamp::new(i64::try_from(duration.get()).ok()?);
+        let time = time_base.calc_time(ts)?;
+        let (secs, nanos) = time.parts();
+        let secs = u64::try_from(secs).ok()?;
+        Some(std::time::Duration::new(secs, nanos))
+    }
 }
 
 /// An attachment is additional data that is carried along with the container format.

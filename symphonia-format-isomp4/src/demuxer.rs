@@ -46,17 +46,45 @@ pub struct TrackState {
 }
 
 impl TrackState {
-    pub fn make(track_num: usize, trak: &TrakAtom) -> (Self, Track) {
+    pub fn make(track_num: usize, trak: &TrakAtom, mvhd_timescale: u32) -> (Self, Track) {
         let mut track = Track::new(trak.tkhd.id);
 
-        // Create the codec parameters using the sample description atom.
         if let Some(codec_params) = trak.mdia.minf.stbl.stsd.make_codec_params() {
             track.with_codec_params(codec_params);
         }
 
-        track
-            .with_time_base(TimeBase::from_recip(trak.mdia.mdhd.timescale))
-            .with_num_frames(trak.duration);
+        track.with_time_base(TimeBase::from_recip(trak.mdia.mdhd.timescale));
+
+        track.with_num_frames(u64::from(trak.mdia.minf.stbl.stsz.sample_count));
+
+        let mdhd_timescale = u64::from(trak.mdia.mdhd.timescale.get());
+        let mvhd_timescale_u64 = u64::from(mvhd_timescale);
+
+        let duration: Option<Duration> = if trak.mdia.mdhd.duration != 0
+            && trak.mdia.mdhd.duration != u64::MAX
+        {
+            Some(Duration::from(trak.mdia.mdhd.duration))
+        } else if trak.tkhd.duration != 0
+            && trak.tkhd.duration != (u32::MAX as u64)
+            && trak.tkhd.duration != u64::MAX
+        {
+            Duration::from(trak.tkhd.duration)
+                .checked_mul(mdhd_timescale)
+                .and_then(|d| d.checked_div(mvhd_timescale_u64))
+        } else if trak.mdia.minf.stbl.stts.total_duration != 0 {
+            Some(Duration::from(trak.mdia.minf.stbl.stts.total_duration))
+        } else {
+            None
+        };
+
+        if let Some(d) = duration {
+            track.with_duration(d);
+        }
+
+        trak.edts.as_ref()
+            .and_then(|edts| edts.elst.as_ref())
+            .and_then(|elst| elst.entries.iter().find(|e| e.media_time >= 0))
+            .map(|entry| track.with_start_ts(Timestamp::from(entry.media_time)));
 
         let state = Self {
             track_num,
@@ -249,7 +277,7 @@ impl<'s> IsoMp4Reader<'s> {
         let mut track_states = Vec::with_capacity(moov.traks.len());
 
         for (t, trak) in moov.traks.iter().enumerate() {
-            let (track_state, track) = TrackState::make(t, trak);
+            let (track_state, track) = TrackState::make(t, trak, moov.mvhd.timescale);
 
             tracks.push(track);
             track_states.push(track_state);

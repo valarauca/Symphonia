@@ -16,7 +16,7 @@ use symphonia_core::formats::well_known::FORMAT_ID_MKV;
 use symphonia_core::io::*;
 use symphonia_core::meta::{Metadata, MetadataLog};
 use symphonia_core::support_format;
-use symphonia_core::units::TimeBase;
+use symphonia_core::units::{Duration, TimeBase};
 
 use log::{info, warn};
 
@@ -296,7 +296,7 @@ impl<'s> MkvReader<'s> {
             tr.with_time_base(time_base);
 
             if let Some(duration) = info.duration {
-                tr.with_num_frames(duration as u64);
+                tr.with_duration(Duration::from(duration as u64));
             }
 
             if let Some(lang_bcp47) = &track.lang_bcp47 {

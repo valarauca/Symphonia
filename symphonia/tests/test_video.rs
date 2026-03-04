@@ -11,6 +11,7 @@ macro_rules! file_test {
         video_codec: $video_codec: ident;
         $(video_width: $video_width: expr;)?
         $(video_height: $video_height: expr;)?
+        $(video_duration: $video_duration: expr;)?
     ) => {
         #[cfg(test)]
         mod $module_name {
@@ -23,10 +24,8 @@ macro_rules! file_test {
             #[allow(unused_imports)] use symphonia_core::codecs::video::{VideoCodecId, VideoCodecParameters, well_known::{*}};
             #[allow(unused_imports)] use symphonia_core::audio::channels::{Channels, layouts::{*}};
 
-            use std::{
-                io::Cursor,
-                path::Path,
-            };
+            use std::path::Path;
+            use std::time::Duration;
 
             const DATA: &'static [u8] = include_bytes!($input_file_path);
 
@@ -53,6 +52,11 @@ macro_rules! file_test {
                 $(assert_eq!(audio_params.channels.clone().expect("expecting channels"), $audio_channels);)?
 
                 let video = format.default_track(TrackType::Video).expect("expecting video track");
+                $(
+                    assert!(video.time_base.is_some(), "video track does not have a timebase");
+                    assert!(video.duration.is_some(), "video track does not have a duration");
+                    assert_eq!(video.get_std_duration().expect("should have a standard duration"), $video_duration);
+                )?
                 let video_params: &VideoCodecParameters = video.codec_params.as_ref().expect("expecting video codec").video().expect("expecting codec info");
                 let video_codec: VideoCodecId = video_params.codec.clone();
                 assert_eq!(video_codec, $video_codec);
@@ -76,6 +80,7 @@ file_test! {
     video_codec: CODEC_ID_H264;
     video_width: 480;
     video_height: 270;
+    video_duration: Duration::new(30, 33_333_333);
 }
 
 file_test! {
