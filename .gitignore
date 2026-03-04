@@ -53,3 +53,12 @@ ehthumbs_vista.db
 *.stackdump
 [Dd]esktop.ini
 *.lnk
+
+# Test artifacts used to verify format compatibility
+symphonia/tests/video_data/*.mp4
+symphonia/tests/video_data/*.mkv
+symphonia/tests/video_data/*.ogg
+!symphonia/tests/video_data/test.mp4
+!symphonia/tests/video_data/frag_test.mp4
+!symphonia/tests/video_data/gen_data.bash
+
