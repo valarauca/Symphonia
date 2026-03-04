@@ -18,7 +18,7 @@
 use std::ops::Range;
 
 mod buf;
-mod channels;
+pub mod channels;
 mod generic;
 mod slice;
 mod util;
