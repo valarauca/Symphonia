@@ -90,6 +90,7 @@ file_test! {
 file_test! {
     module_name: libx264_aac_mkv;
     input_file: "video_data/test_libx264_aac_no_sub.mkv";
+    duration: Duration::new(30, 528_000_000);
 
     audio_codec: CODEC_ID_AAC;
     audio_layout: CHANNEL_LAYOUT_STEREO;
@@ -104,6 +105,7 @@ file_test! {
 file_test! {
     module_name: av1_flac_mkv;
     input_file: "video_data/test_libaom-av1_flac_no_sub.mkv";
+    duration: Duration::new(30, 528_000_000);
 
     audio_codec: CODEC_ID_FLAC;
     audio_layout: CHANNEL_LAYOUT_STEREO;
