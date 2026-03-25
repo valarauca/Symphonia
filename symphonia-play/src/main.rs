@@ -168,8 +168,7 @@ fn run(args: &ArgMatches) -> Result<i32> {
     let mss = MediaSourceStream::new(source, Default::default());
 
     // Use the default options for format readers other than for gapless playback.
-    let fmt_opts =
-        FormatOptions { enable_gapless: !args.is_present("no-gapless"), ..Default::default() };
+    let fmt_opts: FormatOptions = Default::default();
 
     // Use the default options for metadata readers.
     let meta_opts: MetadataOptions = Default::default();
@@ -190,6 +189,8 @@ fn run(args: &ArgMatches) -> Result<i32> {
             // Get the value of the track number option, if provided.
             let track_num = args.get_one::<usize>("track").copied();
 
+            let dec_opts = AudioDecoderOptions::default().gapless(!args.is_present("no-gapless"));
+
             // Select the operating mode.
             if args.is_present("probe-only") {
                 // Probe-only mode only prints information about the format, tracks, metadata, etc.
@@ -198,19 +199,12 @@ fn run(args: &ArgMatches) -> Result<i32> {
             }
             else if args.is_present("verify-only") {
                 // Verify-only mode decodes and verifies the audio, but does not play it.
-                let opts = DecodeOptions {
-                    decoder_opts: AudioDecoderOptions { verify: true, ..Default::default() },
-                    track_num,
-                };
-
+                let opts = DecodeOptions { dec_opts: dec_opts.verify(true), track_num };
                 decode_only(format, opts)
             }
             else if args.is_present("decode-only") {
                 // Decode-only mode decodes the audio, but does not play or verify it.
-                let opts = DecodeOptions {
-                    decoder_opts: AudioDecoderOptions { verify: false, ..Default::default() },
-                    track_num,
-                };
+                let opts = DecodeOptions { dec_opts: dec_opts.verify(false), track_num };
 
                 decode_only(format, opts)
             }
@@ -230,11 +224,7 @@ fn run(args: &ArgMatches) -> Result<i32> {
 
                 // Setup playback options.
                 let opts = PlayOptions {
-                    // Decoder options.
-                    decoder_opts: AudioDecoderOptions {
-                        verify: args.is_present("verify"),
-                        ..Default::default()
-                    },
+                    decoder_opts: dec_opts.verify(args.is_present("verify")),
                     track_num,
                     seek_pos,
                     no_progress: args.is_present("no-progress"),
@@ -255,7 +245,7 @@ fn run(args: &ArgMatches) -> Result<i32> {
 /// Options for the decode command.
 #[derive(Copy, Clone)]
 struct DecodeOptions {
-    decoder_opts: AudioDecoderOptions,
+    dec_opts: AudioDecoderOptions,
     track_num: Option<usize>,
 }
 
@@ -282,7 +272,7 @@ fn decode_only(mut reader: Box<dyn FormatReader>, opts: DecodeOptions) -> Result
 
     // Create a decoder for the track.
     let mut decoder =
-        symphonia::default::get_codecs().make_audio_decoder(codec_params, &opts.decoder_opts)?;
+        symphonia::default::get_codecs().make_audio_decoder(codec_params, &opts.dec_opts)?;
 
     // Save the track ID to filter demuxed packets.
     let track_id = track.id;
