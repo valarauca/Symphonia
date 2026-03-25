@@ -55,6 +55,7 @@ pub struct MkvReader<'s> {
     metadata: MetadataLog,
     cues: Option<CuesElement>,
     timestamp_scale: u64,
+    segment_duration: Option<f64>,
     current_cluster: Option<ClusterState>,
     frames: VecDeque<Frame>,
 }
@@ -296,7 +297,10 @@ impl<'s> MkvReader<'s> {
             tr.with_time_base(time_base);
 
             if let Some(duration) = info.duration {
-                tr.with_duration(Duration::from(duration as u64));
+                let duration_ticks = duration as u64;
+                let codec_delay_ticks = state.codec_delay / info.timestamp_scale.get();
+                let content_duration = duration_ticks.saturating_sub(codec_delay_ticks);
+                tr.with_duration(Duration::from(content_duration));
             }
 
             if let Some(lang_bcp47) = &track.lang_bcp47 {
@@ -325,6 +329,7 @@ impl<'s> MkvReader<'s> {
             metadata,
             cues,
             timestamp_scale: info.timestamp_scale.get(),
+            segment_duration: info.duration,
             current_cluster,
             frames: VecDeque::new(),
         })
